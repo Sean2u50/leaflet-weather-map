@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Site Info + Live Weather Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; width: 100vw; }
+    .legend {
+      background: white;
+      line-height: 1.4em;
+      padding: 10px;
+      color: #333;
+      font: 14px/1.4em sans-serif;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      border-radius: 5px;
+    }
+    .legend i {
+      width: 12px;
+      height: 12px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([38.8043, -96.586], 5);
+
+    const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const radarLayer = L.tileLayer('', {
+      attribution: 'Radar & Rain data &copy; <a href="https://www.rainviewer.com">RainViewer</a>',
+      opacity: 0.6
+    });
+
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(res => res.json())
+      .then(data => {
+        const lastFrame = data.radar.nowcast[data.radar.nowcast.length - 1];
+        radarLayer.setUrl(`https://tilecache.rainviewer.com/v2/radar/${lastFrame}/256/{z}/{x}/{y}/2/1_1.png`);
+      });
+
+    const regionalColors = {
+      "Shannon": "red",
+      "Heidi": "blue",
+      "Opel": "green",
+      "Aja": "orange",
+      "Julie": "purple",
+      "Christy": "darkcyan"
+    };
+
+    const siteMarkers = L.layerGroup();
+
+    const sites = [
+      {"name":"Applewood","lat":39.766,"lon":-105.077,"regional":"Shannon","weather":"https://www.windy.com/39.766/-105.077"},
+      {"name":"Arlington","lat":48.181,"lon":-122.139,"regional":"Heidi","weather":"https://www.windy.com/48.181/-122.139"},
+      {"name":"Baraboo","lat":43.470,"lon":-89.744,"regional":"Opel","weather":"https://www.windy.com/43.470/-89.744"},
+      {"name":"Blue Haven","lat":44.906,"lon":-73.801,"regional":"Aja","weather":"https://www.windy.com/44.906/-73.801"},
+      {"name":"Bryce Canyon","lat":37.567,"lon":-112.054,"regional":"Shannon","weather":"https://www.windy.com/37.567/-112.054"}
+    ];
+
+    sites.forEach(site => {
+      const color = regionalColors[site.regional] || "gray";
+      const marker = L.circleMarker([site.lat, site.lon], {
+        radius: 6,
+        fillColor: color,
+        color: "#333",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.9
+      }).bindPopup(`<strong>${site.name}</strong><br>Regional: ${site.regional}<br><a href="${site.weather}" target="_blank">View Live Weather</a>`);
+      marker.addTo(siteMarkers);
+    });
+
+    siteMarkers.addTo(map);
+
+    const overlayMaps = {
+      "Radar (Live)": radarLayer,
+      "Sites": siteMarkers
+    };
+
+    L.control.layers(null, overlayMaps).addTo(map);
+
+    L.Control.Legend = L.Control.extend({
+      onAdd: function(map) {
+        var div = L.DomUtil.create('div', 'legend');
+        div.innerHTML += "<strong>Regional Managers</strong><br>";
+        div.innerHTML += '<i style="background: red"></i> Shannon<br>';
+        div.innerHTML += '<i style="background: blue"></i> Heidi<br>';
+        div.innerHTML += '<i style="background: green"></i> Opel<br>';
+        div.innerHTML += '<i style="background: orange"></i> Aja<br>';
+        div.innerHTML += '<i style="background: purple"></i> Julie<br>';
+        div.innerHTML += '<i style="background: darkcyan"></i> Christy<br>';
+        return div;
+      }
+    });
+
+    L.control.legend = function(opts) {
+      return new L.Control.Legend(opts);
+    }
+
+    L.control.legend({ position: 'bottomright' }).addTo(map);
+  </script>
+</body>
+</html>
